@@ -101,7 +101,7 @@ def make_handler(app):
             elif from_localhost and xclient and app.cfg.proxy_client(xclient) is not None:
                 name, c = xclient, app.cfg.proxy_client(xclient)
                 admin = bool(c.get("admin"))
-            elif from_localhost and not xclient:
+            elif from_localhost and not xclient and not key:   # a wrong key is never the administrator
                 name, c, admin = "", {}, True
             elif app.cfg.keyed_clients():
                 self._send(401, {"error": {"message": "unknown or missing API key", "type": "kasiru_auth"}})
