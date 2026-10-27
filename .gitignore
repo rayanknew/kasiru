@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+*.egg-info/
+build/
+dist/
+.venv*/
+env
+*.env
+entities.json
+!examples/entities.json
+tokens.json
+quota.json
+ner_cache.json
+audit*.jsonl
+*.bak
+*.tmp
+.DS_Store

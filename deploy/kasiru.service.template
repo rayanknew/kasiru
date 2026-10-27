@@ -1,0 +1,12 @@
+[Unit]
+Description=Kasiru privacy gateway for LLM APIs
+After=network.target
+
+[Service]
+ExecStart={{VENV}}/bin/kasiru serve
+Restart=always
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=default.target

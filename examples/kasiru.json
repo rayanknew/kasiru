@@ -1,0 +1,81 @@
+{
+  "listen": "127.0.0.1:8081",
+  "default_class": "personal",
+  "audit_file": "~/.local/state/kasiru/audit.jsonl",
+
+  "privacy": {
+    "ner": "auto",
+    "ner_model": null,
+    "protect_all": true,
+    "token_labels": {"person": "person", "org": "org", "term": "term"},
+    "secret_markers": ["[secret]", "[чувствительно]"],
+    "phone_regions": ["US", "GB", "DE", "UA", "RU", "TR"]
+  },
+
+  "clients": {
+    "agent":   {"key_env": "KASIRU_KEY_AGENT", "class": "secret", "default_tier": "local"},
+    "scripts": {"key_env": "KASIRU_KEY_SCRIPTS", "default_class": "personal"},
+    "admin":   {"key_env": "KASIRU_KEY_ADMIN", "admin": true}
+  },
+
+  "backends": {
+    "llama": {
+      "kind": "openai",
+      "url": "http://127.0.0.1:8083/v1",
+      "local": true,
+      "classes": ["secret", "personal", "public"],
+      "max_output": 8192,
+      "max_parallel": 1,
+      "timeout_s": 1800
+    },
+    "ollama": {
+      "kind": "ollama",
+      "url": "http://127.0.0.1:11434",
+      "classes": ["secret", "personal", "public"],
+      "max_ctx": 65536
+    },
+    "groq": {
+      "kind": "openai",
+      "url": "https://api.groq.com/openai/v1",
+      "key": "GROQ_API_KEY",
+      "classes": ["personal", "public"],
+      "free_tier": true,
+      "daily_requests": 900,
+      "daily_tokens": 180000,
+      "cooldown_s": 600
+    },
+    "gemini": {
+      "kind": "openai",
+      "url": "https://generativelanguage.googleapis.com/v1beta/openai",
+      "key": "GEMINI_API_KEY",
+      "classes": ["personal", "public"],
+      "free_tier": true,
+      "daily_requests": 240,
+      "daily_tokens": 3000000,
+      "cooldown_s": 300,
+      "extra": {"reasoning_effort": "low"}
+    },
+    "openrouter": {
+      "kind": "openai",
+      "url": "https://openrouter.ai/api/v1",
+      "key": "OPENROUTER_API_KEY",
+      "classes": ["personal", "public"],
+      "price_in": 0.09,
+      "price_out": 0.18,
+      "daily_cost": 1.0,
+      "cooldown_s": 300,
+      "extra": {"reasoning": {"enabled": false}},
+      "prices": {
+        "deepseek/deepseek-v4-flash": {"in": 0.05, "out": 0.45}
+      }
+    }
+  },
+
+  "tiers": {
+    "local": ["llama:qwen3.5-9b"],
+    "cheap": ["groq:openai/gpt-oss-120b", "gemini:gemini-3.6-flash", "llama:qwen3.5-9b"],
+    "good":  ["gemini:gemini-3.6-flash", "groq:openai/gpt-oss-120b", "llama:qwen3.5-9b"],
+    "best":  ["openrouter:deepseek/deepseek-v4-flash", "gemini:gemini-3.6-flash", "llama:qwen3.5-9b"],
+    "long":  ["gemini:gemini-3.6-flash", "openrouter:deepseek/deepseek-v4-flash", "llama:qwen3.5-9b"]
+  }
+}

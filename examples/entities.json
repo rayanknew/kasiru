@@ -1,0 +1,8 @@
+{
+  "persons": ["Jane Example", "Иван Примеров"],
+  "orgs": ["Example Robotics LLC", "ООО Пример"],
+  "terms": {},
+  "ignore": ["Google", "GitHub"],
+  "pending": {"persons": [], "orgs": []},
+  "auto": []
+}
