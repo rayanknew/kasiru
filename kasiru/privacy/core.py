@@ -406,10 +406,18 @@ class Privacy:
             out.append(m)
         return out, agg, secret_parts
 
+    DASHES = "-\u2010\u2011\u2012\u2013\u2014\u2212"   # cloud models rewrite the hyphen in [person-7] as a non-breaking hyphen or a dash
+
     def unscrub(self, text):
+        low = text.lower()
         for tok, rec in sorted(self._token_items(), key=lambda kv: -len(kv[0])):
-            if tok.lower() in text.lower():
-                text = re.sub(re.escape(tok).replace(r"\-", r"\s*[-–]\s*"), rec["value"].replace("\\", "\\\\"), text, flags=re.I)
+            label, _, num = tok.strip("[]").rpartition("-")
+            if label.lower() not in low:
+                continue
+            rx = r"\[\s*" + re.escape(label) + r"\s*[" + self.DASHES + r"]\s*" + num + r"\s*\]"
+            text, n = re.subn(rx, lambda m, v=rec["value"]: v, text, flags=re.I)
+            if n:
+                low = text.lower()
         return text
 
     def unscrub_message(self, message):

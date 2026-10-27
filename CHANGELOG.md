@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.2 — 2026-10-27
+
+- Restoration tolerates tokens rewritten by cloud models: non-breaking hyphens and dashes, case, spaces (`[Person‑7]`).
+
 ## 0.1.1 — 2026-10-27
 
 - Keyless (proxy-trusted) clients: a reverse proxy that authenticates callers sets `X-Client`, and a client entry without a key is matched by that name from loopback.

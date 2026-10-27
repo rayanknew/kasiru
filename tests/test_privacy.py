@@ -54,6 +54,13 @@ class ScrubBasics(unittest.TestCase):
         self.assertIn("[персона-1]", out)
         self.assertEqual(p.unscrub("Reply to [Персона-1] and [персона - 1]"), "Reply to Jane Example and Jane Example")
 
+    def test_unscrub_tolerates_dashes_case_and_spaces(self):
+        p = fresh(persons=["Jane Example"])
+        p.scrub("Jane Example wrote", "personal", use_ner=False)
+        for variant in ("[person-1]", "[Person-1]", "[PERSON \u2011 1]", "[person\u20131]", "[ person - 1 ]"):
+            self.assertEqual(p.unscrub("re: " + variant + "."), "re: Jane Example.", variant)
+        self.assertEqual(p.unscrub("[person-12] stays"), "[person-12] stays")   # a different number is not this token
+
     def test_public_only_cuts_markup(self):
         p = fresh(persons=["Jane Example"])
         out, rep = p.scrub("Jane Example\n[secret] pin 1234\n<secret>x</secret> end", "public")
