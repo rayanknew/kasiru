@@ -83,22 +83,31 @@ def make_handler(app):
 
         # ---- auth ----
         def _auth(self):
-            """-> (client_name, client_dict, is_admin) or sends 401/403 and returns None."""
+            """-> (client_name, client_dict, is_admin) or sends 401/403 and returns None.
+
+            Order: a bearer key of a keyed client; else, from loopback, X-Client naming a keyless (proxy-trusted) client
+            as set by a reverse proxy; else loopback without X-Client = local administrator; else, when keyed clients
+            exist, 401; otherwise the gateway trusts the network and X-Client is just a label."""
             path = self.path.split("?")[0]
             from_localhost = self.client_address[0] in ("127.0.0.1", "::1")
             if path in self.OPEN_PATHS:
                 return "", {}, False
-            if app.cfg["clients"]:
-                auth = self.headers.get("Authorization") or ""
-                key = auth[7:].strip() if auth.lower().startswith("bearer ") else ""
-                name, c = app.cfg.client_by_key(key)
-                if not name:
-                    self._send(401, {"error": {"message": "unknown or missing API key", "type": "kasiru_auth"}})
-                    return None
+            auth = self.headers.get("Authorization") or ""
+            key = auth[7:].strip() if auth.lower().startswith("bearer ") else ""
+            xclient = self.headers.get("X-Client") or ""
+            name, c = app.cfg.client_by_key(key)
+            if name:
                 admin = bool(c.get("admin"))
+            elif from_localhost and xclient and app.cfg.proxy_client(xclient) is not None:
+                name, c = xclient, app.cfg.proxy_client(xclient)
+                admin = bool(c.get("admin"))
+            elif from_localhost and not xclient:
+                name, c, admin = "", {}, True
+            elif app.cfg.keyed_clients():
+                self._send(401, {"error": {"message": "unknown or missing API key", "type": "kasiru_auth"}})
+                return None
             else:
-                name, c = self.headers.get("X-Client") or "", {}
-                admin = from_localhost and not name
+                name, c, admin = xclient, {}, False
             if path in self.ADMIN_PATHS and not admin:
                 self._send(403, {"error": {"message": "administrative path", "type": "kasiru_auth"}})
                 return None
@@ -114,10 +123,16 @@ def make_handler(app):
 
         # ---- ollama pass-through for legacy clients ----
         def _proxy_ollama(self, body):
-            base = app.cfg.get("ollama_url")
-            if not base:
-                return self._send(404, {"error": {"message": "unknown path", "type": "kasiru_path"}})
-            req = urllib.request.Request(base.rstrip("/") + self.path, data=body, method=self.command,
+            path = self.path.split("?")[0]
+            emb = app.cfg.get("embeddings") or {}
+            if path == "/v1/embeddings" and emb.get("url"):          # embeddings always stay local
+                url = emb["url"].rstrip("/") + "/embeddings"
+            else:
+                base = app.cfg.get("ollama_url")
+                if not base:
+                    return self._send(404, {"error": {"message": "unknown path", "type": "kasiru_path"}})
+                url = base.rstrip("/") + self.path
+            req = urllib.request.Request(url, data=body, method=self.command,
                                          headers={"Content-Type": self.headers.get("Content-Type", "application/json")})
             try:
                 r = urllib.request.urlopen(req, timeout=7200)

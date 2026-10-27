@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.1 — 2026-10-27
+
+- Keyless (proxy-trusted) clients: a reverse proxy that authenticates callers sets `X-Client`, and a client entry without a key is matched by that name from loopback.
+- `embeddings.url`: `/v1/embeddings` is proxied to a local embeddings server (never to the cloud).
+
 ## 0.1.0 — 2026-10-27
 
 First public release.

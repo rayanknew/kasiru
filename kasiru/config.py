@@ -35,6 +35,8 @@ DEFAULTS = {
         "generic_words": [],       # extra lower-case words the detector must never treat as names
     },
     "clients": {},                 # {"name": {"key": "...", "key_env": "ENV", "class": "secret", "default_class": "...", "admin": false}}
+                                   # a client without key / key_env is "proxy-trusted": selected by X-Client from a loopback connection
+    "embeddings": None,            # {"url": "http://127.0.0.1:8084/v1"} -> /v1/embeddings is proxied there (always local)
     "backends": {},
     "tiers": {},
 }
@@ -127,8 +129,8 @@ class Config:
             if not self.is_local(name) and "secret" in b["classes"]:
                 raise ValueError("config: backend %s is not local and may not accept class secret" % name)
         for name, c in d["clients"].items():
-            if not (c.get("key") or (c.get("key_env") and self.env.get(c["key_env"]))):
-                raise ValueError("config: client %s has neither key nor a resolvable key_env" % name)
+            if c.get("key_env") and not self.env.get(c["key_env"]):
+                raise ValueError("config: client %s: key_env %s is not set" % (name, c["key_env"]))
 
     def is_local(self, backend):
         b = self.backends.get(backend) or {}
@@ -137,6 +139,14 @@ class Config:
     def client_key(self, name):
         c = self.data["clients"][name]
         return c.get("key") or self.env.get(c.get("key_env", ""))
+
+    def keyed_clients(self):
+        return [n for n in self.data["clients"] if self.client_key(n)]
+
+    def proxy_client(self, name):
+        """-> client dict for a keyless (proxy-trusted) client name, or None."""
+        c = self.data["clients"].get(name)
+        return c if c is not None and not self.client_key(name) else None
 
     def client_by_key(self, key):
         """-> (name, client dict) for a bearer key, or (None, None)."""

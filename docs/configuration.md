@@ -80,8 +80,12 @@ other 5xx → cool-down; network errors → one retry; a looping local answer �
 | `secret_mode` | `local` (default) or `split` |
 | `admin` | may call `/v1/kasiru/entities` and `/v1/kasiru/reload` |
 
-With `clients` empty the gateway trusts whoever can connect; a reverse proxy may then set `X-Client`.
-Administrative paths are then allowed from localhost without that header.
+A client entry without `key` / `key_env` is *proxy-trusted*: a reverse proxy that checks keys itself sets `X-Client`
+to that name, and Kasiru accepts it from loopback connections only. With `clients` empty the gateway trusts whoever
+can connect. A loopback connection without any key or `X-Client` is the local administrator.
+
+`"embeddings": {"url": "http://127.0.0.1:8084/v1"}` proxies `/v1/embeddings` to a local embeddings server; without it
+the request goes to `ollama_url` like other `/api/*` paths.
 
 ## `privacy`
 

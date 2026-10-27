@@ -27,7 +27,9 @@ CONF = {
     "listen": "127.0.0.1:0", "default_class": "personal", "privacy": {"ner": "off"},
     "clients": {"agent": {"key_env": "KASIRU_KEY_AGENT", "class": "secret", "default_tier": "local"},
                 "scripts": {"key": "scripts-key"},
-                "admin": {"key_env": "KASIRU_KEY_ADMIN", "admin": True}},
+                "admin": {"key_env": "KASIRU_KEY_ADMIN", "admin": True},
+                "proxied": {"class": "secret", "default_tier": "local"}},
+    "embeddings": {"url": LOCAL.url},
     "backends": {
         "llama": {"kind": "openai", "url": LOCAL.url, "local": True, "classes": ["secret", "personal", "public"], "max_parallel": 1},
         "gemini": {"kind": "openai", "url": CLOUD.url, "key": "GEMINI_API_KEY", "classes": ["personal", "public"], "daily_requests": 1000, "price_in": 1.0, "price_out": 2.0},
@@ -66,9 +68,9 @@ def chat(content, key="scripts-key", **extra):
 
 
 class Auth(unittest.TestCase):
-    def test_missing_key(self):
-        self.assertEqual(call("/v1/models", key=None)[0], 401)
+    def test_wrong_key(self):
         self.assertEqual(call("/v1/models", key="nope")[0], 401)
+        self.assertEqual(call("/v1/models", key=None, headers={"X-Client": "scripts"})[0], 401)   # a keyed client needs its key
 
     def test_health_is_open(self):
         code, body = call("/health", key=None)
@@ -86,6 +88,28 @@ class Auth(unittest.TestCase):
         self.assertEqual(code, 200)
         with open(APP.cfg.audit_file) as f:
             self.assertEqual(json.loads(f.read().splitlines()[-1])["client"], "scripts")
+
+
+class ProxyTrusted(unittest.TestCase):
+    def test_keyless_client_by_header_from_loopback(self):
+        code, resp = call("/v1/chat/completions", {"messages": [{"role": "user", "content": "Jane Example"}]}, key=None, headers={"X-Client": "proxied"})
+        self.assertEqual(code, 200)
+        self.assertEqual(resp["kasiru"]["class"], "secret")
+        self.assertEqual(resp["kasiru"]["backend"], "llama")
+
+    def test_unknown_header_name_without_key_is_refused(self):
+        self.assertEqual(call("/v1/models", key=None, headers={"X-Client": "nobody"})[0], 401)
+
+    def test_loopback_without_anything_is_admin(self):
+        self.assertEqual(call("/v1/kasiru/entities", key=None)[0], 200)
+
+
+class Embeddings(unittest.TestCase):
+    def test_embeddings_proxied_to_local_url(self):
+        LOCAL.requests.clear()
+        code, resp = call("/v1/embeddings", {"model": "bge", "input": "Jane Example"})
+        self.assertEqual(code, 200)
+        self.assertEqual(LOCAL.requests[-1]["path"], "/v1/embeddings")
 
 
 class Routing(unittest.TestCase):
